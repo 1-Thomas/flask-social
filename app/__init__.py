@@ -5,11 +5,8 @@ from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
 from .config import Config
 from app.main import bp as main_bp
-from app import models
 
-_USERS = {
-    1: {"id": 1, "username": "demo"},
-}
+
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -26,10 +23,12 @@ def create_app(config_class=Config):
 
     @login_manager.user_loader
     def load_user(user_id: str):
-        data = _USERS.get(int(user_id))
-        if data is None:
+        try:
+            return db.session.get(User, int(user_id))
+        except ValueError:
             return None
-        return User(data["id"], data["username"])
+
+ 
     csrf.init_app(app)
     migrate.init_app(app, db)
 
