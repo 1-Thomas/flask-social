@@ -1,17 +1,6 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_wtf import CSRFProtect
-from flask_migrate import Migrate
-from .config import Config
-from app.main import bp as main_bp
-
-
-
-db = SQLAlchemy()
-login_manager = LoginManager()
-csrf = CSRFProtect()
-migrate = Migrate()
+from app.config import Config
+from app.extensions import db, login_manager, csrf, migrate
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -19,6 +8,12 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
+    migrate.init_app(app, db)
+
+    login_manager.login_view = "auth.login"
+
+
     from app.models import User
 
     @login_manager.user_loader
@@ -28,18 +23,10 @@ def create_app(config_class=Config):
         except ValueError:
             return None
 
- 
-    csrf.init_app(app)
-    migrate.init_app(app, db)
-
-    login_manager.login_view = "auth.login"
-
     from app.auth import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix="/auth")
 
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)
-
-    from app import models
 
     return app
