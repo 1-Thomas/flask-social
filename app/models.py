@@ -13,8 +13,23 @@ class User(UserMixin, db.Model):
     bio = db.Column(db.String(280), default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    posts = db.relationship(
+        "Post",
+        back_populates="author",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
+
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
+
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.String(280), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    author = db.relationship("User", back_populates="posts")

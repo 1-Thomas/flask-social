@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}New Post{% endblock %}
+{% block content %}
+  <h1>New Post</h1>
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <p>
+      {{ form.body.label }}<br>
+      {{ form.body(rows=4, cols=60) }}
+      {% for e in form.body.errors %}<div>{{ e }}</div>{% endfor %}
+    </p>
+    <p>{{ form.submit() }}</p>
+  </form>
+{% endblock %}
