@@ -6,9 +6,16 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-  <nav>
-    <a href="{{ url_for('main.index') }}">Home</a>
-  </nav>
+<nav>
+  <a href="{{ url_for('main.index') }}">Home</a>
+  {% if current_user.is_authenticated %}
+    <span>Logged in as {{ current_user.username }}</span>
+    <a href="{{ url_for('auth.logout') }}">Logout</a>
+  {% else %}
+    <a href="{{ url_for('auth.login') }}">Login</a>
+    <a href="{{ url_for('auth.register') }}">Register</a>
+  {% endif %}
+</nav>
   <hr>
   {% with messages = get_flashed_messages() %}
     {% if messages %}
