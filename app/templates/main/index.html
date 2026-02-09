@@ -14,7 +14,7 @@
   {% if posts %}
     {% for post in posts %}
       <div style="margin-bottom: 16px;">
-        <strong>{{ post.author.username }}</strong>
+        <strong><a href="{{ url_for('main.profile', username=post.author.username) }}">{{ post.author.username }}</a></strong>
         <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
         <div style="white-space: pre-wrap;">{{ post.body }}</div>
       </div>

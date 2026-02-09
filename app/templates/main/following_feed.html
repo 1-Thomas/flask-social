@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Following{% endblock %}
+{% block content %}
+  <h1>Following feed</h1>
+
+  <p><a href="{{ url_for('main.index') }}">Back to global feed</a></p>
+  <hr>
+
+  {% if posts %}
+    {% for post in posts %}
+      <div style="margin-bottom: 16px;">
+        <strong>
+          <a href="{{ url_for('main.profile', username=post.author.username) }}">
+            {{ post.author.username }}
+          </a>
+        </strong>
+        <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+        <div style="white-space: pre-wrap;">{{ post.body }}</div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>No posts yet from people you follow.</p>
+  {% endif %}
+{% endblock %}

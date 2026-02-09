@@ -4,6 +4,10 @@ from app.main import bp
 from app.extensions import db
 from app.models import Post
 from app.main.forms import PostForm
+from app.models import User
+from app.main.forms_profile import EditProfileForm
+from flask import request
+from app.models import User
 
 @bp.route("/")
 def index():
@@ -21,3 +25,56 @@ def create_post():
         flash("Posted.")
         return redirect(url_for("main.index"))
     return render_template("main/create_post.html", form=form)
+
+@bp.route("/u/<username>")
+def profile(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    posts = user.posts.order_by(Post.timestamp.desc()).all()
+    return render_template("main/profiles.html", profile_user=user, posts=posts)
+
+@bp.route("/settings/profile", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    form = EditProfileForm()
+    if form.validate_on_submit():
+        current_user.bio = form.bio.data or ""
+        db.session.commit()
+        flash("Profile updated.")
+        return redirect(url_for("main.profile", username=current_user.username))
+
+    if form.bio.data is None:
+        form.bio.data = current_user.bio
+
+    return render_template("main/edit_profile.html", form=form)
+
+@bp.route("/follow/<username>", methods=["POST"])
+@login_required
+def follow(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    if user.id == current_user.id:
+        flash("You cannot follow yourself.")
+        return redirect(url_for("main.profile", username=username))
+
+    current_user.follow(user)
+    db.session.commit()
+    return redirect(url_for("main.profile", username=username))
+
+@bp.route("/unfollow/<username>", methods=["POST"])
+@login_required
+def unfollow(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    if user.id == current_user.id:
+        flash("You cannot unfollow yourself.")
+        return redirect(url_for("main.profile", username=username))
+
+    current_user.unfollow(user)
+    db.session.commit()
+    return redirect(url_for("main.profile", username=username))
+
+@bp.route("/following")
+@login_required
+def following_feed():
+
+    followed_ids = [u.id for u in current_user.followed.all()] + [current_user.id]
+    posts = Post.query.filter(Post.user_id.in_(followed_ids)).order_by(Post.timestamp.desc()).all()
+    return render_template("main/following_feed.html", posts=posts)
