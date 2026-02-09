@@ -2,17 +2,22 @@ from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.main import bp
 from app.extensions import db
-from app.models import Post
+from app.models import Post, Comment
 from app.main.forms import PostForm
 from app.models import User
 from app.main.forms_profile import EditProfileForm
 from flask import request
 from app.models import User
+from app.models import Like
+from app.models import Comment
+from app.main.forms_comment import CommentForm
+
+
 
 @bp.route("/")
 def index():
     posts = Post.query.order_by(Post.timestamp.desc()).all()
-    return render_template("main/index.html", posts=posts)
+    return render_template("main/index.html", posts=posts, Comment=Comment)
 
 @bp.route("/post/new", methods=["GET", "POST"])
 @login_required
@@ -30,7 +35,8 @@ def create_post():
 def profile(username):
     user = User.query.filter_by(username=username).first_or_404()
     posts = user.posts.order_by(Post.timestamp.desc()).all()
-    return render_template("main/profiles.html", profile_user=user, posts=posts)
+    return render_template("main/profile.html", profile_user=user, posts=posts, Comment=Comment)
+
 
 @bp.route("/settings/profile", methods=["GET", "POST"])
 @login_required
@@ -77,4 +83,41 @@ def following_feed():
 
     followed_ids = [u.id for u in current_user.followed.all()] + [current_user.id]
     posts = Post.query.filter(Post.user_id.in_(followed_ids)).order_by(Post.timestamp.desc()).all()
-    return render_template("main/following_feed.html", posts=posts)
+    return render_template("main/following_feed.html", posts=posts, Comment=Comment)
+
+@bp.route("/like/<int:post_id>", methods=["POST"])
+@login_required
+def like_post(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    existing = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+    if existing is None:
+        db.session.add(Like(user_id=current_user.id, post_id=post.id))
+        db.session.commit()
+
+    return redirect(request.referrer or url_for("main.index"))
+
+@bp.route("/unlike/<int:post_id>", methods=["POST"])
+@login_required
+def unlike_post(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    existing = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+    if existing is not None:
+        db.session.delete(existing)
+        db.session.commit()
+
+    return redirect(request.referrer or url_for("main.index"))
+
+@bp.route("/comment/<int:post_id>", methods=["POST"])
+@login_required
+def add_comment(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    form = CommentForm()
+    if form.validate_on_submit():
+        comment = Comment(body=form.body.data, author=current_user, post=post)
+        db.session.add(comment)
+        db.session.commit()
+
+    return redirect(request.referrer or url_for("main.index"))

@@ -2,23 +2,73 @@
 {% block title %}Following{% endblock %}
 {% block content %}
   <h1>Following feed</h1>
-
   <p><a href="{{ url_for('main.index') }}">Back to global feed</a></p>
   <hr>
 
   {% if posts %}
     {% for post in posts %}
-      <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 20px;">
         <strong>
           <a href="{{ url_for('main.profile', username=post.author.username) }}">
             {{ post.author.username }}
           </a>
         </strong>
         <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
-        <div style="white-space: pre-wrap;">{{ post.body }}</div>
+
+        <div style="white-space: pre-wrap;">
+          {{ post.body }}
+        </div>
+
+        <!-- Likes -->
+        <div>
+          <small>Likes: {{ post.like_count() }}</small>
+
+          {% if current_user.is_authenticated %}
+            {% if current_user.has_liked(post) %}
+              <form method="post"
+                    action="{{ url_for('main.unlike_post', post_id=post.id) }}"
+                    style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Unlike</button>
+              </form>
+            {% else %}
+              <form method="post"
+                    action="{{ url_for('main.like_post', post_id=post.id) }}"
+                    style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Like</button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        <!-- Comments -->
+        <div style="margin-top: 8px; padding-left: 12px; border-left: 2px solid #ddd;">
+          <small><strong>Comments ({{ post.comments.count() }})</strong></small>
+
+          {% for c in post.comments.order_by(Comment.created_at.asc()).all() %}
+            <div>
+              <strong>
+                <a href="{{ url_for('main.profile', username=c.author.username) }}">
+                  {{ c.author.username }}
+                </a>
+              </strong>
+              <small>· {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+              <div>{{ c.body }}</div>
+            </div>
+          {% endfor %}
+
+          {% if current_user.is_authenticated %}
+            <form method="post" action="{{ url_for('main.add_comment', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <textarea name="body" rows="2" cols="50" maxlength="280" required></textarea>
+              <button type="submit">Reply</button>
+            </form>
+          {% endif %}
+        </div>
       </div>
     {% endfor %}
   {% else %}
-    <p>No posts yet from people you follow.</p>
+    <p>No posts from followed users.</p>
   {% endif %}
 {% endblock %}

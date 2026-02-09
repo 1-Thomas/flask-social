@@ -33,7 +33,9 @@ class User(UserMixin, db.Model):
         backref=db.backref("followers", lazy="dynamic"),
         lazy="dynamic",
     )
+    likes = db.relationship("Like", backref="user", cascade="all, delete-orphan", lazy="dynamic")
 
+    comments = db.relationship("Comment", backref="author", cascade="all, delete-orphan", lazy="dynamic")
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -51,6 +53,10 @@ class User(UserMixin, db.Model):
 
     def is_following(self, user) -> bool:
         return self.followed.filter(followers.c.followed_id == user.id).count() > 0
+    
+    def has_liked(self, post) -> bool:
+        return Like.query.filter_by(user_id=self.id, post_id=post.id).first() is not None
+
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -59,3 +65,30 @@ class Post(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     author = db.relationship("User", back_populates="posts")
+    likes = db.relationship("Like", backref="post", cascade="all, delete-orphan", lazy="dynamic")
+    comments = db.relationship("Comment", backref="post", cascade="all, delete-orphan", lazy="dynamic")
+
+    def like_count(self) -> int:
+        return self.likes.count()
+
+
+class Like(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "post_id", name="uq_user_post_like"),
+    )
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    body = db.Column(db.String(280), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False)
