@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Edit Post{% endblock %}
+{% block content %}
+  <h1>Edit Post</h1>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <p>
+      {{ form.body.label }}<br>
+      {{ form.body(rows=4, cols=60) }}
+      {% for e in form.body.errors %}<div>{{ e }}</div>{% endfor %}
+    </p>
+    <p>{{ form.submit() }}</p>
+  </form>
+
+  <p><a href="{{ url_for('main.index') }}">Back</a></p>
+{% endblock %}

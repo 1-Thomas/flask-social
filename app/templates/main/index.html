@@ -21,6 +21,20 @@
         </strong>
         <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
 
+        {% if current_user.is_authenticated and post.author.id == current_user.id %}
+          <div style="margin-top: 6px;">
+            <a href="{{ url_for('main.edit_post', post_id=post.id) }}">Edit</a>
+
+            <form method="post"
+                  action="{{ url_for('main.delete_post', post_id=post.id) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Delete this post?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit">Delete</button>
+            </form>
+          </div>
+        {% endif %}
+
         <div style="white-space: pre-wrap;">
           {{ post.body }}
         </div>

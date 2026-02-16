@@ -15,6 +15,20 @@
         </strong>
         <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
 
+        {% if current_user.is_authenticated and post.author.id == current_user.id %}
+          <div style="margin-top: 6px;">
+            <a href="{{ url_for('main.edit_post', post_id=post.id) }}">Edit</a>
+
+            <form method="post"
+                  action="{{ url_for('main.delete_post', post_id=post.id) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Delete this post?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit">Delete</button>
+            </form>
+          </div>
+        {% endif %}
+
         <div style="white-space: pre-wrap;">
           {{ post.body }}
         </div>
@@ -47,14 +61,14 @@
           <small><strong>Comments ({{ post.comments.count() }})</strong></small>
 
           {% for c in post.comments.order_by(Comment.created_at.asc()).all() %}
-            <div>
+            <div style="margin-top: 6px;">
               <strong>
                 <a href="{{ url_for('main.profile', username=c.author.username) }}">
                   {{ c.author.username }}
                 </a>
               </strong>
               <small>· {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
-              <div>{{ c.body }}</div>
+              <div style="white-space: pre-wrap;">{{ c.body }}</div>
             </div>
           {% endfor %}
 

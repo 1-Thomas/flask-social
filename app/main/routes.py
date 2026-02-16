@@ -11,7 +11,8 @@ from app.models import User
 from app.models import Like
 from app.models import Comment
 from app.main.forms_comment import CommentForm
-
+from flask import abort
+from app.main.forms_post_edit import EditPostForm
 
 
 @bp.route("/")
@@ -120,4 +121,35 @@ def add_comment(post_id):
         db.session.add(comment)
         db.session.commit()
 
+    return redirect(request.referrer or url_for("main.index"))
+
+@bp.route("/post/<int:post_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author.id != current_user.id:
+        abort(403)
+
+    form = EditPostForm()
+    if form.validate_on_submit():
+        post.body = form.body.data
+        db.session.commit()
+        flash("Post updated.")
+        return redirect(url_for("main.index"))
+
+    if form.body.data is None:
+        form.body.data = post.body
+
+    return render_template("main/edit_post.html", form=form, post=post)
+
+@bp.route("/post/<int:post_id>/delete", methods=["POST"])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author.id != current_user.id:
+        abort(403)
+
+    db.session.delete(post)
+    db.session.commit()
+    flash("Post deleted.")
     return redirect(request.referrer or url_for("main.index"))
