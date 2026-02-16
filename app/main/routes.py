@@ -13,12 +13,27 @@ from app.models import Comment
 from app.main.forms_comment import CommentForm
 from flask import abort
 from app.main.forms_post_edit import EditPostForm
+POSTS_PER_PAGE = 10
 
 
 @bp.route("/")
+@bp.route("/")
 def index():
-    posts = Post.query.order_by(Post.timestamp.desc()).all()
-    return render_template("main/index.html", posts=posts, Comment=Comment)
+    page = request.args.get("page", 1, type=int)
+
+    pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+        page=page,
+        per_page=POSTS_PER_PAGE,
+        error_out=False,
+    )
+    posts = pagination.items
+
+    return render_template(
+        "main/index.html",
+        posts=posts,
+        pagination=pagination,
+        Comment=Comment,
+    )
 
 @bp.route("/post/new", methods=["GET", "POST"])
 @login_required
@@ -35,8 +50,22 @@ def create_post():
 @bp.route("/u/<username>")
 def profile(username):
     user = User.query.filter_by(username=username).first_or_404()
-    posts = user.posts.order_by(Post.timestamp.desc()).all()
-    return render_template("main/profile.html", profile_user=user, posts=posts, Comment=Comment)
+    page = request.args.get("page", 1, type=int)
+
+    pagination = user.posts.order_by(Post.timestamp.desc()).paginate(
+        page=page,
+        per_page=POSTS_PER_PAGE,
+        error_out=False,
+    )
+    posts = pagination.items
+
+    return render_template(
+        "main/profile.html",
+        profile_user=user,
+        posts=posts,
+        pagination=pagination,
+        Comment=Comment,
+    )
 
 
 @bp.route("/settings/profile", methods=["GET", "POST"])
@@ -81,10 +110,22 @@ def unfollow(username):
 @bp.route("/following")
 @login_required
 def following_feed():
+    page = request.args.get("page", 1, type=int)
 
     followed_ids = [u.id for u in current_user.followed.all()] + [current_user.id]
-    posts = Post.query.filter(Post.user_id.in_(followed_ids)).order_by(Post.timestamp.desc()).all()
-    return render_template("main/following_feed.html", posts=posts, Comment=Comment)
+
+    pagination = Post.query.filter(Post.user_id.in_(followed_ids)) \
+        .order_by(Post.timestamp.desc()) \
+        .paginate(page=page, per_page=POSTS_PER_PAGE, error_out=False)
+
+    posts = pagination.items
+
+    return render_template(
+        "main/following_feed.html",
+        posts=posts,
+        pagination=pagination,
+        Comment=Comment,
+    )
 
 @bp.route("/like/<int:post_id>", methods=["POST"])
 @login_required
