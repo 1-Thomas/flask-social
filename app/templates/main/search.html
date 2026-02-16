@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block content %}
+  <h1>Search</h1>
+
+  <form method="get" action="{{ url_for('main.search') }}">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search users or posts" />
+    <button type="submit">Search</button>
+  </form>
+
+  <hr>
+
+  {% if not q %}
+    <p>Enter a search term.</p>
+  {% else %}
+    <h2>Users</h2>
+    {% if users %}
+      <ul>
+        {% for u in users %}
+          <li>
+            <a href="{{ url_for('main.profile', username=u.username) }}">@{{ u.username }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No users found.</p>
+    {% endif %}
+
+    <h2>Posts</h2>
+    {% if posts %}
+      {% for post in posts %}
+        <div style="margin-bottom: 18px;">
+          <strong>
+            <a href="{{ url_for('main.profile', username=post.author.username) }}">
+              {{ post.author.username }}
+            </a>
+          </strong>
+          <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+          <div style="white-space: pre-wrap;">{{ post.body }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>No posts found.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

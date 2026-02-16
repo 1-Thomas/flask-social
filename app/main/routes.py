@@ -153,3 +153,25 @@ def delete_post(post_id):
     db.session.commit()
     flash("Post deleted.")
     return redirect(request.referrer or url_for("main.index"))
+
+@bp.route("/search")
+def search():
+    q = (request.args.get("q") or "").strip()
+    users = []
+    posts = []
+
+    if q:
+        users = (
+            User.query
+            .filter(User.username.ilike(f"%{q}%"))
+            .order_by(User.username.asc())
+            .all()
+        )
+        posts = (
+            Post.query
+            .filter(Post.body.ilike(f"%{q}%"))
+            .order_by(Post.timestamp.desc())
+            .all()
+        )
+
+    return render_template("main/search.html", q=q, users=users, posts=posts)
