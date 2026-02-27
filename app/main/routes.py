@@ -16,6 +16,7 @@ from app.main.forms_post_edit import EditPostForm
 import os
 import uuid
 from werkzeug.utils import secure_filename
+
 POSTS_PER_PAGE = 10
 POINTS_POST = 10
 POINTS_COMMENT = 3
@@ -24,7 +25,21 @@ POINTS_FOLLOW = 2
 POINTS_MESSAGE = 1
 
 
-@bp.route("/")
+def save_image(uploaded_file):
+    if not uploaded_file or not uploaded_file.filename:
+        return None
+
+    filename = secure_filename(uploaded_file.filename)
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in current_app.config.get("ALLOWED_IMAGE_EXTENSIONS", {"png", "jpg", "jpeg", "gif"}):
+        return None
+
+    new_name = f"{uuid.uuid4().hex}.{ext}"
+    path = os.path.join(current_app.config["UPLOAD_FOLDER"], new_name)
+    uploaded_file.save(path)
+    return new_name
+
+
 @bp.route("/")
 def index():
     page = request.args.get("page", 1, type=int)
@@ -43,18 +58,28 @@ def index():
         Comment=Comment,
     )
 
+
 @bp.route("/post/new", methods=["GET", "POST"])
 @login_required
 def create_post():
     form = PostForm()
     if form.validate_on_submit():
-        post = Post(body=form.body.data, author=current_user)
+        img_name = save_image(form.image.data)  # <-- photo upload
+
+        post = Post(
+            body=form.body.data,
+            author=current_user,
+            image_filename=img_name,  # <-- save filename on post
+        )
         db.session.add(post)
         current_user.add_points(POINTS_POST)
         db.session.commit()
+
         flash("Posted.")
         return redirect(url_for("main.index"))
+
     return render_template("main/create_post.html", form=form)
+
 
 @bp.route("/u/<username>")
 def profile(username):
@@ -92,6 +117,7 @@ def edit_profile():
 
     return render_template("main/edit_profile.html", form=form)
 
+
 @bp.route("/follow/<username>", methods=["POST"])
 @login_required
 def follow(username):
@@ -101,13 +127,13 @@ def follow(username):
         flash("You cannot follow yourself.")
         return redirect(url_for("main.profile", username=username))
 
-   
     if not current_user.is_following(user):
         current_user.follow(user)
         current_user.add_points(POINTS_FOLLOW)
         db.session.commit()
 
     return redirect(url_for("main.profile", username=username))
+
 
 @bp.route("/unfollow/<username>", methods=["POST"])
 @login_required
@@ -121,6 +147,7 @@ def unfollow(username):
     db.session.commit()
     return redirect(url_for("main.profile", username=username))
 
+
 @bp.route("/following")
 @login_required
 def following_feed():
@@ -128,9 +155,11 @@ def following_feed():
 
     followed_ids = [u.id for u in current_user.followed.all()] + [current_user.id]
 
-    pagination = Post.query.filter(Post.user_id.in_(followed_ids)) \
-        .order_by(Post.timestamp.desc()) \
+    pagination = (
+        Post.query.filter(Post.user_id.in_(followed_ids))
+        .order_by(Post.timestamp.desc())
         .paginate(page=page, per_page=POSTS_PER_PAGE, error_out=False)
+    )
 
     posts = pagination.items
 
@@ -140,6 +169,7 @@ def following_feed():
         pagination=pagination,
         Comment=Comment,
     )
+
 
 @bp.route("/like/<int:post_id>", methods=["POST"])
 @login_required
@@ -154,6 +184,7 @@ def like_post(post_id):
 
     return redirect(request.referrer or url_for("main.index"))
 
+
 @bp.route("/unlike/<int:post_id>", methods=["POST"])
 @login_required
 def unlike_post(post_id):
@@ -165,6 +196,7 @@ def unlike_post(post_id):
         db.session.commit()
 
     return redirect(request.referrer or url_for("main.index"))
+
 
 @bp.route("/comment/<int:post_id>", methods=["POST"])
 @login_required
@@ -179,6 +211,7 @@ def add_comment(post_id):
         db.session.commit()
 
     return redirect(request.referrer or url_for("main.index"))
+
 
 @bp.route("/post/<int:post_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -199,6 +232,7 @@ def edit_post(post_id):
 
     return render_template("main/edit_post.html", form=form, post=post)
 
+
 @bp.route("/post/<int:post_id>/delete", methods=["POST"])
 @login_required
 def delete_post(post_id):
@@ -211,6 +245,7 @@ def delete_post(post_id):
     flash("Post deleted.")
     return redirect(request.referrer or url_for("main.index"))
 
+
 @bp.route("/search")
 def search():
     q = (request.args.get("q") or "").strip()
@@ -219,14 +254,12 @@ def search():
 
     if q:
         users = (
-            User.query
-            .filter(User.username.ilike(f"%{q}%"))
+            User.query.filter(User.username.ilike(f"%{q}%"))
             .order_by(User.username.asc())
             .all()
         )
         posts = (
-            Post.query
-            .filter(Post.body.ilike(f"%{q}%"))
+            Post.query.filter(Post.body.ilike(f"%{q}%"))
             .order_by(Post.timestamp.desc())
             .all()
         )
@@ -238,8 +271,9 @@ def search():
 @login_required
 def inbox():
     msgs = (
-        Message.query
-        .filter((Message.sender_id == current_user.id) | (Message.recipient_id == current_user.id))
+        Message.query.filter(
+            (Message.sender_id == current_user.id) | (Message.recipient_id == current_user.id)
+        )
         .order_by(Message.timestamp.desc())
         .all()
     )
@@ -261,14 +295,10 @@ def inbox():
 
     threads.sort(key=lambda t: t[1].timestamp, reverse=True)
 
-   
     all_users = User.query.filter(User.id != current_user.id).order_by(User.username.asc()).all()
 
-    return render_template(
-        "main/inbox.html",
-        threads=threads,
-        all_users=all_users
-    )
+    return render_template("main/inbox.html", threads=threads, all_users=all_users)
+
 
 @bp.route("/messages/u/<username>", methods=["GET", "POST"])
 @login_required
@@ -281,45 +311,30 @@ def thread(username):
     form = MessageForm()
 
     if form.validate_on_submit():
-        msg = Message(
-            sender_id=current_user.id,
-            recipient_id=other.id,
-            body=form.body.data
-        )
+        msg = Message(sender_id=current_user.id, recipient_id=other.id, body=form.body.data)
         db.session.add(msg)
 
-       
         current_user.add_points(POINTS_MESSAGE)
 
         db.session.commit()
         return redirect(url_for("main.thread", username=other.username))
 
     messages = (
-        Message.query
-        .filter(
-            ((Message.sender_id == current_user.id) & (Message.recipient_id == other.id)) |
-            ((Message.sender_id == other.id) & (Message.recipient_id == current_user.id))
+        Message.query.filter(
+            ((Message.sender_id == current_user.id) & (Message.recipient_id == other.id))
+            | ((Message.sender_id == other.id) & (Message.recipient_id == current_user.id))
         )
         .order_by(Message.timestamp.asc())
         .all()
     )
 
-    unread = [
-        m for m in messages
-        if (m.recipient_id == current_user.id and not m.is_read)
-    ]
-
+    unread = [m for m in messages if (m.recipient_id == current_user.id and not m.is_read)]
     if unread:
         for m in unread:
             m.is_read = True
         db.session.commit()
 
-    return render_template(
-        "main/thread.html",
-        other=other,
-        messages=messages,
-        form=form
-    )
+    return render_template("main/thread.html", other=other, messages=messages, form=form)
 
 
 @bp.route("/messages/new/<username>", methods=["GET", "POST"])
@@ -333,21 +348,11 @@ def new_message(username):
     if form.validate_on_submit():
         msg = Message(sender_id=current_user.id, recipient_id=other.id, body=form.body.data)
         db.session.add(msg)
+
+        current_user.add_points(POINTS_MESSAGE)
+
         db.session.commit()
         return redirect(url_for("main.thread", username=other.username))
 
     return render_template("main/new_message.html", other=other, form=form)
 
-def save_image(uploaded_file):
-    if not uploaded_file or not uploaded_file.filename:
-        return None
-
-    filename = secure_filename(uploaded_file.filename)
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in current_app.config["ALLOWED_IMAGE_EXTENSIONS"]:
-        return None
-
-    new_name = f"{uuid.uuid4().hex}.{ext}"
-    path = os.path.join(current_app.config["UPLOAD_FOLDER"], new_name)
-    uploaded_file.save(path)
-    return new_name
