@@ -3,11 +3,13 @@
 {% block content %}
   <h1>Following feed</h1>
   <p><a href="{{ url_for('main.index') }}">Back to global feed</a></p>
+
   <hr>
 
   {% if posts %}
     {% for post in posts %}
       <div style="margin-bottom: 20px;">
+
         <strong>
           <a href="{{ url_for('main.profile', username=post.author.username) }}">
             {{ post.author.username }}
@@ -15,6 +17,7 @@
         </strong>
         <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
 
+        <!-- Edit/Delete (author only) -->
         {% if current_user.is_authenticated and post.author.id == current_user.id %}
           <div style="margin-top: 6px;">
             <a href="{{ url_for('main.edit_post', post_id=post.id) }}">Edit</a>
@@ -78,25 +81,31 @@
               <textarea name="body" rows="2" cols="50" maxlength="280" required></textarea>
               <button type="submit">Reply</button>
             </form>
-          {% if pagination %}
-            <div style="margin-top: 18px;">
-              {% if pagination.has_prev %}
-                <a href="{{ url_for(request.endpoint, **request.view_args, page=pagination.prev_num) }}">Previous</a>
-              {% endif %}
-
-              <span style="margin: 0 10px;">
-                Page {{ pagination.page }} of {{ pagination.pages if pagination.pages > 0 else 1 }}
-              </span>
-
-              {% if pagination.has_next %}
-                <a href="{{ url_for(request.endpoint, **request.view_args, page=pagination.next_num) }}">Next</a>
-              {% endif %}
-            </div>
+          {% else %}
+            <small><a href="{{ url_for('auth.login') }}">Login</a> to comment.</small>
           {% endif %}
-
         </div>
+
       </div>
     {% endfor %}
+
+    <!-- Pagination -->
+    {% if pagination %}
+      <div style="margin-top: 18px;">
+        {% if pagination.has_prev %}
+          <a href="{{ url_for('main.following_feed', page=pagination.prev_num) }}">Previous</a>
+        {% endif %}
+
+        <span style="margin: 0 10px;">
+          Page {{ pagination.page }} of {{ pagination.pages if pagination.pages > 0 else 1 }}
+        </span>
+
+        {% if pagination.has_next %}
+          <a href="{{ url_for('main.following_feed', page=pagination.next_num) }}">Next</a>
+        {% endif %}
+      </div>
+    {% endif %}
+
   {% else %}
     <p>No posts from followed users.</p>
   {% endif %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Chat with {{ other.username }}{% endblock %}
+{% block content %}
+  <h1>Chat with @{{ other.username }}</h1>
+
+  <div style="margin-bottom: 16px;">
+    <a href="{{ url_for('main.inbox') }}">Back to inbox</a>
+  </div>
+
+  <div style="border: 1px solid #ddd; padding: 12px; margin-bottom: 12px;">
+    {% if messages %}
+      {% for m in messages %}
+        <div style="margin-bottom: 10px;">
+          {% if m.sender_id == current_user.id %}
+            <strong>You</strong>
+          {% else %}
+            <strong>@{{ other.username }}</strong>
+          {% endif %}
+          <small>· {{ m.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+          <div style="white-space: pre-wrap;">{{ m.body }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>No messages yet.</p>
+    {% endif %}
+  </div>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <p>
+      {{ form.body.label }}<br>
+      {{ form.body(rows=3, cols=60) }}
+      {% for e in form.body.errors %}<div>{{ e }}</div>{% endfor %}
+    </p>
+    <p>{{ form.submit() }}</p>
+  </form>
+{% endblock %}

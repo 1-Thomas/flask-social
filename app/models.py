@@ -56,6 +56,35 @@ class User(UserMixin, db.Model):
     
     def has_liked(self, post) -> bool:
         return Like.query.filter_by(user_id=self.id, post_id=post.id).first() is not None
+    
+    sent_messages = db.relationship(
+        "Message",
+        foreign_keys="Message.sender_id",
+        backref="sender",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
+    received_messages = db.relationship(
+        "Message",
+        foreign_keys="Message.recipient_id",
+        backref="recipient",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+    points = db.Column(db.Integer, default=0, nullable=False)
+
+    def add_points(self, amount: int) -> None:
+        if amount:
+            self.points = (self.points or 0) + int(amount)
+
+    def level(self) -> int:
+        p = self.points or 0
+        return 1 + (p // 100)
+
+    def next_level_points(self) -> int:
+        return self.level() * 100
+
 
 
 class Post(db.Model):
@@ -67,7 +96,7 @@ class Post(db.Model):
     author = db.relationship("User", back_populates="posts")
     likes = db.relationship("Like", backref="post", cascade="all, delete-orphan", lazy="dynamic")
     comments = db.relationship("Comment", backref="post", cascade="all, delete-orphan", lazy="dynamic")
-
+    image_filename = db.Column(db.String(255), nullable=True)
     def like_count(self) -> int:
         return self.likes.count()
 
@@ -92,3 +121,15 @@ class Comment(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False)
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    sender_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+
+    body = db.Column(db.String(2000), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+   
+    is_read = db.Column(db.Boolean, default=False, nullable=False)

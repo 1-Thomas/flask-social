@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+  <h1>Messages</h1>
+
+  <!-- New Message Section -->
+  <h3>Start New Conversation</h3>
+  <form method="get" action="" id="newMessageForm">
+    <select id="userSelect" onchange="goToThread()">
+      <option value="">Select user</option>
+      {% for user in all_users %}
+        <option value="{{ user.username }}">{{ user.username }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <script>
+    function goToThread() {
+      const username = document.getElementById("userSelect").value;
+      if (username) {
+        window.location.href = "/messages/u/" + username;
+      }
+    }
+  </script>
+
+  <hr>
+
+  <h3>Conversations</h3>
+
+  {% if threads %}
+    <ul>
+      {% for other, last in threads %}
+        <li>
+          <a href="{{ url_for('main.thread', username=other.username) }}">
+            @{{ other.username }}
+          </a>
+          <small>· {{ last.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+          <div style="white-space: pre-wrap;">{{ last.body }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No conversations yet.</p>
+  {% endif %}
+{% endblock %}

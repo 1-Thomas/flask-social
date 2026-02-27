@@ -1,11 +1,15 @@
 from flask import Flask
 from app.config import Config
 from app.extensions import db, login_manager, csrf, migrate
-
+import os
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
+    app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
+    app.config["ALLOWED_IMAGE_EXTENSIONS"] = {"png", "jpg", "jpeg", "gif"}
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     db.init_app(app)
     login_manager.init_app(app)
