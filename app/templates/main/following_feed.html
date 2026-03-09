@@ -1,121 +1,121 @@
 {% extends "base.html" %}
 {% block title %}Following{% endblock %}
 {% block content %}
-  <h1>Following feed</h1>
-  <p><a href="{{ url_for('main.index') }}">Back to global feed</a></p>
+  <div class="feed-container">
+    <h1 class="page-title">Following</h1>
 
-  <hr>
+    {% if posts %}
+      {% for post in posts %}
+        <div class="card">
+          <div class="card-header">
+            <div class="post-user">
+              <div class="avatar">{{ post.author.username[0]|upper }}</div>
+              <div class="post-user-meta">
+                <strong>
+                  <a href="{{ url_for('main.profile', username=post.author.username) }}">
+                    {{ post.author.username }}
+                  </a>
+                </strong>
+                <div class="card-meta">{{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</div>
+              </div>
+            </div>
 
-  {% if posts %}
-    {% for post in posts %}
-      <div style="margin-bottom: 20px;">
-
-        <strong>
-          <a href="{{ url_for('main.profile', username=post.author.username) }}">
-            {{ post.author.username }}
-          </a>
-        </strong>
-        <small>· {{ post.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
-
-        <!-- Edit/Delete (author only) -->
-        {% if current_user.is_authenticated and post.author.id == current_user.id %}
-          <div style="margin-top: 6px;">
-            <a href="{{ url_for('main.edit_post', post_id=post.id) }}">Edit</a>
-
-            <form method="post"
-                  action="{{ url_for('main.delete_post', post_id=post.id) }}"
-                  style="display:inline;"
-                  onsubmit="return confirm('Delete this post?');">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit">Delete</button>
-            </form>
+            {% if current_user.is_authenticated and post.author.id == current_user.id %}
+              <div class="inline-actions">
+                <a class="button button-secondary" href="{{ url_for('main.edit_post', post_id=post.id) }}">Edit</a>
+                <form method="post"
+                      action="{{ url_for('main.delete_post', post_id=post.id) }}"
+                      onsubmit="return confirm('Delete this post?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="button-danger">Delete</button>
+                </form>
+              </div>
+            {% endif %}
           </div>
-        {% endif %}
 
-        <div style="white-space: pre-wrap; margin-top: 6px;">
-          {{ post.body }}
-        </div>
-
-        <!-- Image -->
-        {% if post.image_filename %}
-          <div style="margin-top: 8px;">
+          {% if post.image_filename %}
             <img src="{{ url_for('static', filename='uploads/' ~ post.image_filename) }}"
                  alt="post image"
-                 style="max-width: 320px; height: auto; border: 1px solid #ddd;">
+                 class="post-image">
+          {% endif %}
+
+          <div class="icon-actions">
+            {% if current_user.is_authenticated %}
+              {% if current_user.has_liked(post) %}
+                <form method="post" action="{{ url_for('main.unlike_post', post_id=post.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="icon-btn">♥</button>
+                </form>
+              {% else %}
+                <form method="post" action="{{ url_for('main.like_post', post_id=post.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="icon-btn">♡</button>
+                </form>
+              {% endif %}
+            {% endif %}
           </div>
-        {% endif %}
 
-        <!-- Likes -->
-        <div style="margin-top: 8px;">
-          <small>Likes: {{ post.like_count() }}</small>
+          <div class="like-count">{{ post.like_count() }} likes</div>
 
-          {% if current_user.is_authenticated %}
-            {% if current_user.has_liked(post) %}
+          <div class="post-caption">
+            <span class="caption-user">{{ post.author.username }}</span>
+            <span class="caption-text">{{ post.body }}</span>
+          </div>
+
+          <div class="comments-box">
+
+            <div class="comments-title">
+              Comments ({{ post.comments.count() }})
+            </div>
+
+            {% for c in post.comments.order_by(Comment.created_at.asc()).all() %}
+              <div class="comment-item">
+                <strong>
+                  <a href="{{ url_for('main.profile', username=c.author.username) }}">
+                    {{ c.author.username }}
+                  </a>
+                </strong>
+                <span class="comment-body">{{ c.body }}</span>
+              </div>
+            {% endfor %}
+
+            {% if current_user.is_authenticated %}
               <form method="post"
-                    action="{{ url_for('main.unlike_post', post_id=post.id) }}"
-                    style="display:inline;">
+                    action="{{ url_for('main.add_comment', post_id=post.id) }}"
+                    class="comment-form">
+
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit">Unlike</button>
-              </form>
-            {% else %}
-              <form method="post"
-                    action="{{ url_for('main.like_post', post_id=post.id) }}"
-                    style="display:inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit">Like</button>
+
+                <textarea
+                  name="body"
+                  rows="2"
+                  maxlength="280"
+                  required
+                  placeholder="Add a comment..."></textarea>
+
+                <button type="submit">Reply</button>
               </form>
             {% endif %}
+
+</div>
+        </div>
+      {% endfor %}
+
+      {% if pagination %}
+        <div class="pagination">
+          {% if pagination.has_prev %}
+            <a class="button button-secondary" href="{{ url_for('main.following_feed', page=pagination.prev_num) }}">Previous</a>
+          {% endif %}
+
+          <span class="card-meta">Page {{ pagination.page }} of {{ pagination.pages if pagination.pages > 0 else 1 }}</span>
+
+          {% if pagination.has_next %}
+            <a class="button button-secondary" href="{{ url_for('main.following_feed', page=pagination.next_num) }}">Next</a>
           {% endif %}
         </div>
-
-        <!-- Comments -->
-        <div style="margin-top: 8px; padding-left: 12px; border-left: 2px solid #ddd;">
-          <small><strong>Comments ({{ post.comments.count() }})</strong></small>
-
-          {% for c in post.comments.order_by(Comment.created_at.asc()).all() %}
-            <div style="margin-top: 6px;">
-              <strong>
-                <a href="{{ url_for('main.profile', username=c.author.username) }}">
-                  {{ c.author.username }}
-                </a>
-              </strong>
-              <small>· {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
-              <div style="white-space: pre-wrap;">{{ c.body }}</div>
-            </div>
-          {% endfor %}
-
-          {% if current_user.is_authenticated %}
-            <form method="post" action="{{ url_for('main.add_comment', post_id=post.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <textarea name="body" rows="2" cols="50" maxlength="280" required></textarea>
-              <button type="submit">Reply</button>
-            </form>
-          {% else %}
-            <small><a href="{{ url_for('auth.login') }}">Login</a> to comment.</small>
-          {% endif %}
-        </div>
-
-      </div>
-    {% endfor %}
-
-    <!-- Pagination -->
-    {% if pagination %}
-      <div style="margin-top: 18px;">
-        {% if pagination.has_prev %}
-          <a href="{{ url_for('main.following_feed', page=pagination.prev_num) }}">Previous</a>
-        {% endif %}
-
-        <span style="margin: 0 10px;">
-          Page {{ pagination.page }} of {{ pagination.pages if pagination.pages > 0 else 1 }}
-        </span>
-
-        {% if pagination.has_next %}
-          <a href="{{ url_for('main.following_feed', page=pagination.next_num) }}">Next</a>
-        {% endif %}
-      </div>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">No posts from followed users.</div>
     {% endif %}
-
-  {% else %}
-    <p>No posts from followed users.</p>
-  {% endif %}
+  </div>
 {% endblock %}
