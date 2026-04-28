@@ -69,7 +69,7 @@ def create_post():
         post = Post(
             body=form.body.data,
             author=current_user,
-            image_filename=img_name,  # <-- save filename on post
+            image_filename=img_name,  
         )
         db.session.add(post)
         current_user.add_points(POINTS_POST)
